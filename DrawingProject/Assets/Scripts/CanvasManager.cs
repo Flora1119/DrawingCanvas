@@ -227,9 +227,13 @@ public class CanvasManager : MonoBehaviour
                 if (Vector2.Distance(points[points.Count - 1], mousePos) > Mathf.Epsilon)
                 {
                     points.Add(mousePos);
-                    lr.positionCount++;
+                    lr.positionCount = points.Count;
                     lr.SetPosition(lr.positionCount - 1, mousePos);
                     replayRecordList.replayRecords.Add(lr.positionCount - 1, mousePos);
+                    //if(GetAngle(points[points.Count - 1], mousePos))
+                    //Debug.Log(Vector2.Angle(points[points.Count - 1], mousePos));
+                    BezierUpdate();
+                    StartCoroutine(UpdateTexture());
                 }
             }
         }
@@ -237,12 +241,12 @@ public class CanvasManager : MonoBehaviour
         {
             if (drawMode == DrawMode.Brush || drawMode == DrawMode.Eraser)
             {
-                BezierPath bezierPath = new BezierPath();
+                /*BezierPath bezierPath = new BezierPath();
                 bezierPath.Interpolate(points, 0.3f);
                 List<Vector3> smoothedPoints = bezierPath.GetDrawingPoints2();
 
                 lr.positionCount = smoothedPoints.Count;
-                lr.SetPositions(smoothedPoints.ToArray());
+                lr.SetPositions(smoothedPoints.ToArray());*/
 
                 StartCoroutine(ApplyTexture2D(false));
                 points.Clear();
@@ -256,6 +260,15 @@ public class CanvasManager : MonoBehaviour
             //기록 끝
             isFirst = true;
         }
+    }
+    public void BezierUpdate()
+    {
+        BezierPath bezierPath = new BezierPath();
+        bezierPath.Interpolate(points, 0.3f);
+        List<Vector3> smoothedPoints = bezierPath.GetDrawingPoints2();
+
+        lr.positionCount = smoothedPoints.Count;
+        lr.SetPositions(smoothedPoints.ToArray());
     }
 
     //손, 브러시, 지우개, 페인트, 스포이드 버튼 눌렀을 때 모드 변경
@@ -279,6 +292,25 @@ public class CanvasManager : MonoBehaviour
                 drawMode = DrawMode.Spoid;
                 break;
         }
+    }
+    IEnumerator UpdateTexture()
+    {
+        yield return new WaitForEndOfFrame();
+
+        //새 텍스쳐2D를 생성
+        int width = (int)drawArea.rect.width;
+        int height = (int)drawArea.rect.height;
+        Texture2D tex = new Texture2D(width, height, TextureFormat.RGB24, false);
+        tex.ReadPixels(new Rect(360, 0, width, height), 0, 0);
+        tex.Apply();
+
+        //Color32로 분할
+        Color32[] cur_color = tex.GetPixels32();
+
+        //캔버스에 텍스쳐2D를 대입
+        drawing_texture = drawable_go.GetComponent<Image>().sprite.texture;
+        drawing_texture.SetPixels32(cur_color);
+        drawing_texture.Apply();
     }
 
     IEnumerator ApplyTexture2D(bool isReplay)
